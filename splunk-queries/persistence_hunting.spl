@@ -1,0 +1,21 @@
+``` New scheduled task created with a binary path in a user-writable location ```
+index=wineventlog EventCode=4698
+| rex field=Task_Content "<Command>(?<task_binary>[^<]+)</Command>"
+| where match(task_binary, "(?i)(\\\\Users\\\\.*\\\\(AppData|Downloads|Temp)|C:\\\\Users\\\\Public)")
+| table _time Computer Task_Name Account_Name task_binary
+| eval hunt_finding = "Scheduled Task with Suspicious Binary Path"
+| eval mitre = "T1053.005"
+
+``` New service installed referencing powershell/wscript/cscript with encoded or obfuscated arguments ```
+index=wineventlog EventCode=7045
+| where match(Service_File_Name, "(?i)(powershell.*-enc|wscript|cscript|-nop\s+-w\s+hidden)")
+| table _time Computer Service_Name Service_File_Name
+| eval hunt_finding = "Suspicious Service Installation — Script Interpreter"
+| eval mitre = "T1543.003"
+
+``` Registry Run key modification outside known baseline paths ```
+index=sysmon EventCode=13 TargetObject="*\\CurrentVersion\\Run*"
+| where NOT match(Details, "(?i)(Program Files|Windows\\\\System32)")
+| table _time Computer TargetObject Details Image
+| eval hunt_finding = "Suspicious Run Key Persistence"
+| eval mitre = "T1547.001"

@@ -1,0 +1,21 @@
+``` One source host authenticating to multiple destination hosts in a short window (fan-out logon pattern) ```
+index=wineventlog EventCode=4624 Logon_Type=3
+| bin _time span=10m
+| stats dc(dest_host) AS unique_destinations values(dest_host) AS destinations BY src_host, Account_Name, _time
+| where unique_destinations >= 3
+| eval hunt_finding = "Suspected Lateral Movement — Fan-out Authentication"
+| eval mitre = "T1021.002 / T1570"
+| sort - unique_destinations
+
+``` Admin share access (ADMIN$/C$) followed by remote process creation within 5 minutes — classic PsExec pattern ```
+index=wineventlog EventCode=5140 Share_Name IN ("\\*\ADMIN$", "\\*\C$")
+| rename Source_Address AS src_ip, Computer AS dest_host
+| join dest_host [
+    search index=wineventlog EventCode=4688
+    | eval proc_time=_time
+    | rename Computer AS dest_host
+]
+| where (proc_time - _time) <= 300 AND (proc_time - _time) >= 0
+| table _time src_ip dest_host New_Process_Name proc_time
+| eval hunt_finding = "Suspected PsExec-style Remote Execution"
+| eval mitre = "T1570"

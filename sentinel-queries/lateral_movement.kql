@@ -1,0 +1,8 @@
+// Fan-out authentication: one source host logging into 3+ distinct destination hosts within 10 minutes
+SecurityEvent
+| where EventID == 4624 and LogonType == 3
+| bin TimeGenerated span=10m
+| summarize DestinationCount = dcount(Computer), Destinations = make_set(Computer) by IpAddress, Account, TimeGenerated
+| where DestinationCount >= 3
+| extend HuntFinding = "Suspected Lateral Movement — Fan-out Authentication", Mitre = "T1021.002 / T1570"
+| sort by DestinationCount desc

@@ -1,0 +1,14 @@
+// New scheduled task or service referencing a script interpreter with suspicious arguments
+DeviceProcessEvents
+| where FileName in~ ("schtasks.exe", "sc.exe")
+| where ProcessCommandLine has_any ("powershell", "wscript", "cscript", "-enc", "-nop", "hidden")
+| project TimeGenerated, DeviceName, FileName, ProcessCommandLine, AccountName
+| extend HuntFinding = "Suspicious Task/Service Creation — Script Interpreter", Mitre = "T1053.005 / T1543.003"
+
+// Registry Run key writes outside expected install paths
+DeviceRegistryEvents
+| where RegistryKey has @"CurrentVersion\Run"
+| where ActionType == "RegistryValueSet"
+| where RegistryValueData !has_any ("Program Files", "Windows\\System32")
+| project TimeGenerated, DeviceName, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName
+| extend HuntFinding = "Suspicious Run Key Persistence", Mitre = "T1547.001"
